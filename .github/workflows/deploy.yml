@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   deploy:
@@ -15,30 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Create dist directory
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Create docs directory
         run: |
-          mkdir -p dist
+          mkdir -p docs
           
-      - name: Copy HTML files to dist
-        run: |
-          find . -name "*.html" -type f | while read file; do
-            mkdir -p "dist/$(dirname "$file")"
-            cp "$file" "dist/$file"
-          done
-      
-      - name: Copy input files for reference
-        run: |
-          find . -name "input.txt" -type f | while read file; do
-            mkdir -p "dist/$(dirname "$file")"
-            cp "$file" "dist/$file"
-          done
-      
       - name: Copy Day 4 visualization as index
         run: |
-          cp aoc2025/src/day04/visualization.html dist/index.html
+          cp aoc2025/src/day04/visualization.html docs/index.html
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs'
       
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+        id: deployment
+        uses: actions/deploy-pages@v4
