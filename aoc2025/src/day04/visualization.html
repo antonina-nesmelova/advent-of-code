@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 4 - Paper Rolls Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .visualization-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            color: #667eea;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .grid-container {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 20px;
+            font-size: 0.9em;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            word-break: break-all;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .grid-content {
+            display: inline-block;
+            text-align: left;
+        }
+
+        .cell {
+            width: 20px;
+            height: 20px;
+            margin: 2px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            cursor: default;
+            position: relative;
+        }
+
+        .cell.empty {
+            background: #e0e0e0;
+            color: #999;
+        }
+
+        .cell.roll {
+            background: transparent;
+            color: white;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .cell.accessible {
+            background: #ffd43b;
+            color: #333;
+            animation: highlight 0.5s ease-in-out;
+        }
+
+        .cell.removed {
+            background: #51cf66;
+            color: white;
+            animation: popAndDisappear 0.8s ease-out;
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes highlight {
+            0% { transform: scale(0.8); background: #ffd43b; }
+            50% { transform: scale(1.15); background: #ffec99; }
+            100% { transform: scale(1); background: #ffd43b; }
+        }
+
+        @keyframes popAndDisappear {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+                background: #ff6b6b;
+            }
+            30% {
+                transform: scale(1.3) rotate(15deg);
+                background: #ffd43b;
+            }
+            50% {
+                transform: scale(1.4) rotate(-10deg);
+                background: #51cf66;
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.3) rotate(180deg);
+            }
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) rotate(var(--rotation));
+                opacity: 0;
+            }
+        }
+
+        .grid-row {
+            display: flex;
+            margin: 2px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .info-box {
+            background: #f0f0f0;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            color: #333;
+        }
+
+        .info-box strong {
+            color: #667eea;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .step-info {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .step-info strong {
+            color: #667eea;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎄 Day 4: Printing Department 🎄</h1>
+        <p class="subtitle">Paper Roll Accessibility Visualization</p>
+
+        <!-- <div class="visualization-section">
+            <div class="section-title">📋 Initial Grid</div>
+            <div id="gridInitial" class="grid-container"></div>
+        </div> -->
+
+        <div class="controls">
+            <button onclick="playAnimation()">▶ Play Animation</button>
+            <button onclick="resetAnimation()">⟲ Reset</button>
+            <button onclick="nextStep()">⏭ Next Step</button>
+        </div>
+
+        <div id="animationContainer"></div>
+
+    </div>
+
+    <script>
+        const exampleInput = `..@@.@@@@.
+@@@.@.@.@@
+@@@@@.@.@@
+@.@@@@..@.
+@@.@@@@.@@
+.@@@@@@@.@
+.@.@.@.@@@
+@.@@@.@@@@
+.@@@@@@@@.
+@.@.@@@.@.`;
+
+        let states = [];
+        let currentStateIndex = 0;
+        let isAnimating = false;
+
+        function parseInput(rawInput) {
+            return rawInput.trim().split('\n');
+        }
+
+        function countAdjacentRolls(grid, row, col) {
+            let count = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    if (newRow >= 0 && newRow < grid.length && newCol >= 0 && newCol < grid[newRow].length) {
+                        if (grid[newRow][newCol] === '@') {
+                            count++;
+                        }
+                    }
+                }
+            }
+            return count;
+        }
+
+        function generateStates() {
+            let grid = parseInput(exampleInput);
+            states = [{ grid: grid.map(r => r), removed: [], step: 0 }];
+            let step = 1;
+            let totalRemoved = 0;
+
+            while (true) {
+                const accessiblePositions = [];
+
+                for (let row = 0; row < grid.length; row++) {
+                    for (let col = 0; col < grid[row].length; col++) {
+                        if (grid[row][col] === '@') {
+                            const adjacentRolls = countAdjacentRolls(grid, row, col);
+                            if (adjacentRolls < 4) {
+                                accessiblePositions.push({ row, col });
+                            }
+                        }
+                    }
+                }
+
+                if (accessiblePositions.length === 0) {
+                    break;
+                }
+
+                totalRemoved += accessiblePositions.length;
+                for (const { row, col } of accessiblePositions) {
+                    grid[row] = grid[row].substring(0, col) + '.' + grid[row].substring(col + 1);
+                }
+
+                states.push({
+                    grid: grid.map(r => r),
+                    removed: accessiblePositions.map(p => `${p.row},${p.col}`),
+                    step: step,
+                    removed_count: accessiblePositions.length,
+                    total_removed: totalRemoved
+                });
+                step++;
+            }
+        }
+
+        function createConfetti(x, y) {
+            console.log('Creating confetti at', x, y);
+            const colors = ['#ffd43b', '#51cf66', '#ff6b6b', '#748ffc', '#ff8787', '#ffa94d'];
+            const confettiCount = 15;
+
+            for (let i = 0; i < confettiCount; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = x + 'px';
+                confetti.style.top = y + 'px';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                confetti.style.width = (8 + Math.random() * 6) + 'px';
+                confetti.style.height = (8 + Math.random() * 6) + 'px';
+
+                const angle = (Math.PI * 2 * i) / confettiCount + (Math.random() - 0.5) * 0.8;
+                const distance = 60 + Math.random() * 80;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance - 30;
+                const rotation = Math.random() * 720 - 360;
+
+                confetti.style.setProperty('--tx', tx + 'px');
+                confetti.style.setProperty('--ty', ty + 'px');
+                confetti.style.setProperty('--rotation', rotation + 'deg');
+                confetti.style.animation = `confettiFall ${0.6 + Math.random() * 0.4}s ease-out forwards`;
+
+                document.body.appendChild(confetti);
+
+                setTimeout(() => confetti.remove(), 1000);
+            }
+        }
+
+        function renderGrid(grid, removedPositions = []) {
+            const container = document.createElement('div');
+            container.style.position = 'relative';
+            const removedSet = new Set(removedPositions);
+
+            grid.forEach((row, rowIdx) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'grid-row';
+
+                for (let col = 0; col < row.length; col++) {
+                    const cell = document.createElement('div');
+                    const key = `${rowIdx},${col}`;
+                    const isRemoved = removedSet.has(key);
+
+                    if (row[col] === '@' || isRemoved) {
+                        cell.className = isRemoved ? 'cell removed' : 'cell roll';
+                        cell.textContent = isRemoved ? '✓' : '🧻';
+
+                        if (isRemoved) {
+                            cell.dataset.shouldConfetti = 'true';
+                        }
+                    } else {
+                        cell.className = 'cell empty';
+                        cell.textContent = '·';
+                    }
+                    rowDiv.appendChild(cell);
+                }
+                container.appendChild(rowDiv);
+            });
+
+            return container;
+        }
+
+        function triggerConfettiForContainer(container) {
+            const cellsToAnimate = container.querySelectorAll('[data-should-confetti="true"]');
+            console.log('Found cells to animate:', cellsToAnimate.length);
+
+            if (cellsToAnimate.length > 0) {
+                setTimeout(() => {
+                    cellsToAnimate.forEach(cell => {
+                        const rect = cell.getBoundingClientRect();
+                        console.log('Cell rect:', rect);
+                        createConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                    });
+                }, 350);
+            }
+        }
+
+        function displayState(index) {
+            if (index < 0 || index >= states.length) return;
+
+            currentStateIndex = index;
+            const state = states[index];
+            const animContainer = document.getElementById('animationContainer');
+
+            animContainer.innerHTML = '';
+
+            if (state.step === 0) {
+                const section = document.createElement('div');
+                section.className = 'visualization-section';
+                section.innerHTML = '<div class="step-info">Initial state - <strong>13 accessible rolls</strong></div>';
+                const grid = renderGrid(state.grid, []);
+                section.appendChild(grid);
+                animContainer.appendChild(section);
+            } else {
+                const removedCount = state.removed.length;
+                const totalRemoved = state.total_removed;
+
+                const section = document.createElement('div');
+                section.className = 'visualization-section';
+                section.innerHTML = `
+                    <div class="step-info">
+                        Step <strong>${state.step}</strong>: Remove <strong>${removedCount}</strong> roll${removedCount > 1 ? 's' : ''}
+                        (Total removed: <strong>${totalRemoved}</strong>)
+                    </div>
+                `;
+                const grid = renderGrid(state.grid, state.removed);
+                section.appendChild(grid);
+                animContainer.appendChild(section);
+
+                // Trigger confetti after the grid is in the DOM
+                triggerConfettiForContainer(grid);
+            }
+
+            // Update stats
+            // document.getElementById('totalRolls').textContent = exampleInput.split('\n').join('').split('').filter(c => c === '@').length;
+            // document.getElementById('currentStep').textContent = state.step;
+            // document.getElementById('removedThisStep').textContent = state.removed ? state.removed.length : 0;
+            // document.getElementById('totalRemoved').textContent = state.total_removed || 0;
+        }
+
+        async function playAnimation() {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            // Start from beginning if at the end
+            if (currentStateIndex >= states.length - 1) {
+                currentStateIndex = 0;
+            }
+
+            for (let i = currentStateIndex; i < states.length; i++) {
+                displayState(i);
+                await new Promise(resolve => setTimeout(resolve, 1200));
+            }
+
+            isAnimating = false;
+        }
+
+        function nextStep() {
+            if (currentStateIndex < states.length - 1) {
+                displayState(currentStateIndex + 1);
+            }
+        }
+
+        function resetAnimation() {
+            isAnimating = false;
+            currentStateIndex = 0;
+            displayState(0);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            console.log('Page loaded, initializing...');
+            generateStates();
+            console.log('States generated:', states.length);
+
+            // Display initial grid
+            const gridInitial = document.getElementById('gridInitial');
+            if (gridInitial && states.length > 0) {
+                console.log('Rendering initial grid');
+                gridInitial.appendChild(renderGrid(states[0].grid, []));
+            } else {
+                console.error('gridInitial element not found or no states');
+            }
+
+            // Display first state
+            displayState(0);
+            console.log('Initialization complete');
+        });
+    </script>
+</body>
+</html>
