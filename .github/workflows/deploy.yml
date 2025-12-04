@@ -1,0 +1,147 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create dist directory
+        run: |
+          mkdir -p dist
+          
+      - name: Copy HTML files to dist
+        run: |
+          find . -name "*.html" -type f | while read file; do
+            mkdir -p "dist/$(dirname "$file")"
+            cp "$file" "dist/$file"
+          done
+      
+      - name: Copy input files for reference
+        run: |
+          find . -name "input.txt" -type f | while read file; do
+            mkdir -p "dist/$(dirname "$file")"
+            cp "$file" "dist/$file"
+          done
+      
+      - name: Create index page
+        run: |
+          cat > dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Advent of Code - Visualizations</title>
+              <style>
+                  * {
+                      margin: 0;
+                      padding: 0;
+                      box-sizing: border-box;
+                  }
+                  body {
+                      font-family: 'Courier New', monospace;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      min-height: 100vh;
+                      padding: 40px 20px;
+                  }
+                  .container {
+                      max-width: 900px;
+                      margin: 0 auto;
+                      background: white;
+                      border-radius: 15px;
+                      padding: 40px;
+                      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                  }
+                  h1 {
+                      color: #667eea;
+                      margin-bottom: 10px;
+                      text-align: center;
+                  }
+                  .subtitle {
+                      color: #666;
+                      text-align: center;
+                      margin-bottom: 30px;
+                  }
+                  .visualizations {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                      gap: 20px;
+                  }
+                  .card {
+                      border: 2px solid #667eea;
+                      border-radius: 10px;
+                      padding: 20px;
+                      text-align: center;
+                      transition: transform 0.3s ease, box-shadow 0.3s ease;
+                      cursor: pointer;
+                  }
+                  .card:hover {
+                      transform: translateY(-5px);
+                      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+                  }
+                  .card h3 {
+                      color: #667eea;
+                      margin-bottom: 10px;
+                  }
+                  .card p {
+                      color: #666;
+                      font-size: 0.9em;
+                      margin-bottom: 15px;
+                  }
+                  .card a {
+                      display: inline-block;
+                      background: #667eea;
+                      color: white;
+                      padding: 8px 16px;
+                      border-radius: 5px;
+                      text-decoration: none;
+                      font-size: 0.9em;
+                      transition: background 0.3s ease;
+                  }
+                  .card a:hover {
+                      background: #764ba2;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>🎄 Advent of Code - Visualizations</h1>
+                  <p class="subtitle">Interactive visualizations of AoC solutions</p>
+                  <div class="visualizations" id="list"></div>
+              </div>
+              <script>
+                  const visualizations = [
+                      { year: 2025, day: 4, name: 'Paper Rolls', path: 'aoc2025/src/day04/visualization.html' }
+                  ];
+                  
+                  const list = document.getElementById('list');
+                  visualizations.forEach(viz => {
+                      const card = document.createElement('div');
+                      card.className = 'card';
+                      card.innerHTML = `
+                          <h3>Day ${viz.day} - ${viz.name}</h3>
+                          <p>AoC ${viz.year}</p>
+                          <a href="${viz.path}">View Visualization →</a>
+                      `;
+                      list.appendChild(card);
+                  });
+              </script>
+          </body>
+          </html>
+          EOF
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
